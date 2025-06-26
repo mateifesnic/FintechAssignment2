@@ -13,7 +13,7 @@ This repository contains the complete Minimum Viable Product (MVP), including da
 - [Usage Workflow](#6-usage-workflow)
 - [Project Components](#7-project-components)
 - [API Endpoints](#8-api-endpoints)
-- [Future Development](#9-future-development)
+- [Banking Data](#9-banking-data)
 
 ---
 
@@ -156,3 +156,107 @@ Your FinWise agent is now running on your specialized, expert model.
 * `POST /ask`: The main endpoint for all conversational interactions. Receives the user's chat history and orchestrates the AI and database response.
 
 ---
+
+## 9. Banking Data
+
+## Data Pipeline: Connecting to Sandbox APIs
+
+This section provides a step-by-step guide on how to use the provided scripts to fetch data from the ABN AMRO and ING sandboxes, process it, and merge it into the final database required by the application.
+
+### Part 1: Fetching ABN AMRO Data
+
+The ABN AMRO process involves running a local web server to capture an access token for each account, then using those tokens to fetch data.
+
+#### Step 1.1: Prerequisites
+
+1.  Place your ABN AMRO-provided certificate files in the root directory:
+    * `PSD2TPPCertificate.crt`
+    * `PSD2TPPprivateKey.key`
+2.  Generate a self-signed SSL certificate for `localhost` and place the files in the root directory:
+    * `cert.pem`
+    * `key.pem`
+3.  Open `ABNTokenObtainer.py` and `ABNDataFetcher.py` and set your `API_KEY` variable at the top of both files.
+
+#### Step 1.2: Obtain an Access Token for Each Account
+
+You must repeat this process for every ABN AMRO account you wish to connect.
+
+1.  Run the token obtainer script. Since it uses port 443, it requires administrator privileges:
+    ```bash
+    sudo python ABNTokenObtainer.py
+    ```
+2.  Open a web browser and navigate to `https://localhost/login`.
+3.  Follow the ABN AMRO sandbox authentication flow.
+4.  After consenting, you will be redirected to a page displaying a JSON object. Find the `access_token` value and copy it.
+
+#### Step 1.3: Fetch and Store ABN AMRO Data
+
+1.  Open the `ABNDataFetcher.py` script.
+2.  Paste the access token(s) you copied into the `ABN_ACCOUNT_ACCESS_TOKENS` list.
+3.  Run the data fetcher script:
+    ```bash
+    python ABNDataFetcher.py
+    ```
+    This will connect to the API for each token and save the combined data into `abn_amro_data_output.json`.
+4.  Finally, run the database conversion script:
+    ```bash
+    python ABNtoDB.py
+    ```
+    This reads the JSON file and creates the ABN AMRO-specific database: `abn_amro_data.db`.
+
+---
+
+### Part 2: Fetching ING Data
+
+The ING process involves an interactive script to get an initial refresh token, which is then used by other scripts for automated data fetching.
+
+#### Step 2.1: Prerequisites
+
+1.  Create a directory named `certs` in the root of your project.
+2.  Place your four ING certificate files inside the `certs/` directory:
+    * `example_client_signing.cer`
+    * `example_client_signing.key`
+    * `example_client_tls.cer`
+    * `example_client_tls.key`
+3.  Ensure your `CLIENT_ID` and `CERTIFICATE_SERIAL_NUMBER` are set correctly in all ING-related Python scripts.
+
+#### Step 2.2: Obtain an Initial Refresh Token for Each Account
+
+This interactive process only needs to be done once per ING account to get the long-lived refresh token.
+
+1.  Run the initial token obtainer script:
+    ```bash
+    python INGtokenobtainer.py
+    ```
+2.  The script will print a URL in the console. Copy and paste this URL into your browser.
+3.  Follow the ING sandbox authentication flow.
+4.  After consenting, the browser will be redirected to a `www.example.com` URL. Copy the `code` value from the URL parameters.
+5.  Paste this code back into the terminal where the script is waiting and press Enter.
+6.  The script will exchange the code for an access token and a **refresh token**, and save them to a new file named `ing_tokens.csv`.
+
+#### Step 2.3: Fetch and Store ING Data
+
+1.  Now that `ing_tokens.csv` exists, you can run the main data fetcher script:
+    ```bash
+    python INGDataFetcher.py
+    ```
+    This script automatically uses the refresh tokens from the CSV to get new access tokens and fetch the latest account and transaction data, saving it to `ing_data_output.json`.
+2.  Finally, run the database conversion script:
+    ```bash
+    python INGtoDB.py
+    ```
+    This reads the JSON file and creates the ING-specific database: `ing_data.db`.
+
+> **Note:** For subsequent data pulls from ING, you only need to re-run `INGDataFetcher.py` and `INGtoDB.py`.
+
+---
+
+### Part 3: Final Database Merge
+
+After you have successfully created both `abn_amro_data.db` and `ing_data.db`, you can merge them.
+
+1.  Run the database merger script:
+    ```bash
+    python DBMerger.py
+    ```
+2.  This script will read from both bank-specific databases and create the final, unified database file: `merged_data1.db`. This is the database the main Flask application uses to answer questions.
