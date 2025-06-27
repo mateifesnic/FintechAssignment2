@@ -6,8 +6,7 @@ import os
 # The new syntax recommends initializing the client with the key
 try:
     client = openai.OpenAI(
-        api_key = "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"
-
+        api_key = "YOUR_API_KEY"
     )
 except TypeError:
     print("ERROR: Your OpenAI API key is not set.")
