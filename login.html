@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - FinWise</title>
+    <style>
+        :root {
+            --background-color: #121212;
+            --surface-color: #1E1E1E;
+            --primary-text-color: #E0E0E0;
+            --primary-red: #943126;
+            --primary-red-hover: #7b2a20;
+            --border-color: #333333;
+        }
+        body {
+            font-family: 'Bodoni MT', 'Didot', 'Times New Roman', serif;
+            background-color: var(--background-color);
+            margin: 0;
+            color: var(--primary-text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .login-container {
+            background-color: var(--surface-color);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .login-container h1 {
+            color: var(--primary-red);
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .login-container p {
+            color: var(--secondary-text-color);
+            margin-bottom: 30px;
+        }
+        .login-form input {
+            width: 90%;
+            padding: 12px;
+            margin-bottom: 15px;
+            background-color: #3A3B3C;
+            border: 1px solid var(--border-color);
+            color: var(--primary-text-color);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        .login-form button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: var(--primary-red);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-family: inherit;
+            transition: background-color 0.2s;
+        }
+        .login-form button:hover {
+            background-color: var(--primary-red-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>FinWise</h1>
+        <p>Your Personal Financial Advisor</p>
+        <div class="login-form">
+            <input type="text" placeholder="Username (e.g., demo)" id="username">
+            <input type="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+        </div>
+    </div>
+
+    <script>
+        function login() {
+            // Get the username from the input field
+            const username = document.getElementById('username').value;
+
+            // In a real app, you would verify the password.
+            // For this prototype, we just store the username and redirect.
+            if (username) {
+                localStorage.setItem('finwise_username', username);
+            } else {
+                localStorage.setItem('finwise_username', 'User'); // Default if empty
+            }
+
+            // Redirect to the main dashboard
+            window.location.href = 'index.html';
+        }
+
+        // Allow pressing Enter to log in
+        document.getElementById('username').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>

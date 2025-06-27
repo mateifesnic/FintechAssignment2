@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinWise - Your Financial Advisor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --background-color: #121212;
+            --surface-color: #1E1E1E;
+            --primary-text-color: #E0E0E0;
+            --secondary-text-color: #B0B0B0;
+            --primary-red: #943126;
+            --primary-red-hover: #7b2a20;
+            --user-message-bg: #943126;
+            --finwise-message-bg: #3A3B3C;
+            --border-color: #333333;
+            --dashboard-item-bg: #2C2C2C;
+        }
+
+        body {
+            font-family: 'Bodoni MT', 'Didot', 'Times New Roman', serif;
+            background-color: var(--background-color);
+            margin: 0;
+            color: var(--primary-text-color);
+        }
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            background: var(--surface-color);
+        }
+        .left-panel {
+            flex: 1;
+            padding: 30px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background-color: #242526;
+            overflow-y: auto;
+        }
+        .right-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            flex-shrink: 0;
+            display:flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--primary-red);
+        }
+        #welcome-message {
+            font-size: 16px;
+            color: var(--secondary-text-color);
+        }
+        .chat-window {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin-bottom: 15px;
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--user-message-bg);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .finwise-message {
+            align-self: flex-start;
+            background-color: var(--finwise-message-bg);
+            color: var(--primary-text-color);
+            border-bottom-left-radius: 4px;
+        }
+        .typing-indicator {
+            align-self: flex-start;
+            color: var(--secondary-text-color);
+            font-style: italic;
+        }
+        .chart-container {
+            background-color: var(--dashboard-item-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 600px;
+            min-height: 300px;
+            align-self: flex-start;
+            box-sizing: border-box;
+        }
+        .input-area {
+            display: flex;
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background-color: #3A3B3C;
+            color: var(--primary-text-color);
+            border-radius: 20px;
+            font-size: 16px;
+            font-family: 'Bodoni MT', 'Didot', 'Times New Roman', serif;
+        }
+        #send-btn {
+            padding: 12px 20px;
+            margin-left: 10px;
+            border: none;
+            background-color: var(--primary-red);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .dashboard-header {
+            margin-bottom: 20px;
+        }
+        .dashboard-header h2 {
+            margin: 0;
+            font-size: 22px;
+            color: var(--primary-text-color);
+        }
+        .dashboard-item {
+            background: var(--dashboard-item-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .metric-name {
+            font-size: 16px;
+            color: var(--secondary-text-color);
+            margin: 0;
+        }
+        .metric-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-text-color);
+            margin: 5px 0 0 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="left-panel" id="left-panel">
+        <div class="dashboard-header">
+            <h2>Financial Information</h2>
+        </div>
+    </div>
+    <div class="right-panel">
+        <div class="header">
+            <h1>FinWise Financial Advisor</h1>
+            <span id="welcome-message"></span>
+        </div>
+        <div class="chat-window" id="chat-window">
+            </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Ask a question or track a metric...">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const leftPanel = document.getElementById('left-panel');
+    const chatWindow = document.getElementById('chat-window');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    let messageHistory = [];
+
+    const loadDashboard = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:5001/dashboard_items');
+            const items = await response.json();
+            document.querySelectorAll('.dashboard-item').forEach(el => el.remove());
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.classList.add('dashboard-item');
+                const valueDisplay = (item.metric_name === 'Slot Available') ?
+                    `<p class="metric-value" style="font-size: 22px; color: #666;">Not in use</p>` :
+                    `<p class="metric-value">${item.value}</p>`;
+                itemDiv.innerHTML = `<p class="metric-name">Slot ${item.slot_id}: ${item.metric_name}</p>${valueDisplay}`;
+                leftPanel.appendChild(itemDiv);
+            });
+        } catch (error) {
+            console.error("Error loading dashboard:", error);
+        }
+    };
+
+    const addMessage = (text, sender, addToHistory = true) => {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', sender === 'user' ? 'user-message' : 'finwise-message');
+        messageElement.textContent = text;
+        chatWindow.appendChild(messageElement);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        if (addToHistory) {
+            messageHistory.push({ "role": sender, "content": text });
+        }
+        return messageElement;
+    };
+
+    const setTyping = (isTyping) => {
+        let typingIndicator = document.getElementById('typing-indicator');
+        if (isTyping && !typingIndicator) {
+            typingIndicator = document.createElement('div');
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.classList.add('message', 'typing-indicator');
+            typingIndicator.textContent = 'FinWise is thinking...';
+            chatWindow.appendChild(typingIndicator);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        } else if (!isTyping && typingIndicator) {
+            typingIndicator.remove();
+        }
+    };
+
+    const renderChartInChat = (messageElement, chartType, chartData) => {
+        const chartContainer = document.createElement('div');
+        chartContainer.classList.add('chart-container');
+        const canvas = document.createElement('canvas');
+        chartContainer.appendChild(canvas);
+        messageElement.appendChild(chartContainer);
+        new Chart(canvas.getContext('2d'), {
+            type: chartType,
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Spending (€)',
+                    data: chartData.data,
+                    backgroundColor: ['#943126', '#1f618d', '#f1c40f', '#229954', '#884ea0', '#ba4a00', '#17a589'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#E0E0E0',
+                            font: { family: "'Bodoni MT', 'Didot', 'Times New Roman', serif" }
+                        }
+                    }
+                },
+                scales: {
+                    y: { ticks: { color: '#E0E0E0' }, grid: { color: '#444' } },
+                    x: { ticks: { color: '#E0E0E0' }, grid: { color: '#444' } }
+                }
+            }
+        });
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    };
+
+    const handleSend = async () => {
+        const question = userInput.value.trim();
+        if (!question) return;
+        addMessage(question, 'user');
+        userInput.value = '';
+        setTyping(true);
+        try {
+            const response = await fetch('http://127.0.0.1:5001/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: messageHistory }),
+            });
+            setTyping(false);
+            if (!response.ok) {
+                const errorData = await response.json();
+                addMessage(`Sorry, an error occurred: ${errorData.error || 'Unknown server error.'}`, 'finwise', false);
+                return;
+            }
+            const data = await response.json();
+
+            if (data.type === 'chart') {
+                const messageBubble = addMessage(data.answer, 'assistant');
+                renderChartInChat(messageBubble, data.chart_type, data.chart_data);
+            } else {
+                addMessage(data.answer, 'assistant');
+            }
+            loadDashboard();
+        } catch (error) {
+            setTyping(false);
+            addMessage('I am having trouble connecting. Please make sure the Python server is running.', 'finwise', false);
+            console.error('Error:', error);
+        }
+    };
+
+    sendBtn.addEventListener('click', handleSend);
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Personalize the UI on load
+        const username = localStorage.getItem('finwise_username') || 'User';
+        document.getElementById('welcome-message').textContent = `Hi, ${username}`;
+
+        // Add the initial welcome message to the chat window and the history
+        const initialMessage = `Hello ${username}! I'm FinWise. How can I help you with your finances today?`;
+        addMessage(initialMessage, 'assistant');
+
+        loadDashboard();
+    });
+</script>
+
+</body>
+</html>
